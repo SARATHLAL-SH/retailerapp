@@ -11,14 +11,32 @@ import LinearGradient from 'react-native-linear-gradient';
 import React, {useEffect, useRef, useState} from 'react';
 import {colors} from '../Global/styles';
 import Icon from 'react-native-vector-icons/dist/Ionicons';
+import {useDispatch, useSelector} from 'react-redux';
+import {fetchOrders} from '../redux/slices/orderSlice';
 
 const NavBar = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [isOpen, setIsOpen] = useState(false);
+  const [isnotification, setIsNotification] = useState(false);
+  const dispatch = useDispatch();
+  const orders = useSelector(state => state.Order.data);
+  const [orderData, setOrderData] = useState();
+  const [notificationCount, setNotificationCount] = useState();
+
+  useEffect(() => {
+    dispatch(fetchOrders());
+    
+  },[dispatch]);
+  useEffect(()=>{
+    const dataArray = orders?.flatMap(item => item?.dataArray.flat());
+    setOrderData(dataArray);
+    setNotificationCount(dataArray?.length);
+    dataArray?.length > 0 ? setIsNotification(true) : setIsNotification(false);
+    // console.log('data array from redux', dataArray);
+  },[orders])
 
   const toggleIsOpen = () => {
-    // Display the confirmation alert
     Alert.alert(
       'Confirmation',
       `Are you sure change status to ${isOpen ? 'close' : 'open'}?`,
@@ -75,7 +93,12 @@ const NavBar = () => {
           </View>
         </TouchableOpacity>
         <View>
-          <Icon name="notifications" color="#4F8EF7" size={30} />
+          <Icon
+            name="notifications"
+            color={isnotification ? 'red' : '#4F8EF7'}
+            size={25}
+          />
+          <Text style={styles.notificationCount}>{notificationCount}</Text>
         </View>
         <View>
           <TouchableOpacity
@@ -99,7 +122,7 @@ export default NavBar;
 const styles = StyleSheet.create({
   container: {},
   gradientContainer: {
-    height: Dimensions.get('screen').height * 0.05,
+    height: Dimensions.get('screen').height * 0.08,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -131,5 +154,13 @@ const styles = StyleSheet.create({
   },
   status: {
     fontWeight: '700',
+  },
+  notificationCount: {
+    position: 'absolute',
+    right: -10,
+    color: colors.WHITE,
+    fontWeight: '700',
+    fontSize: 16,
+    top: -8,
   },
 });
