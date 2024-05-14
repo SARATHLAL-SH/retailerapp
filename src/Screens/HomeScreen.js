@@ -17,6 +17,8 @@ import {io} from 'socket.io-client';
 import {WAPI} from '../utils/ApiUtils';
 import {useSelector, useDispatch} from 'react-redux';
 import {fetchOrders} from '../redux/slices/orderSlice';
+import Icon from 'react-native-vector-icons/AntDesign';
+import IconCross from 'react-native-vector-icons/Entypo';
 
 const HomeScreen = () => {
   // const [dataArray, setDataArray] = useState([]);
@@ -27,24 +29,41 @@ const HomeScreen = () => {
   const orders = useSelector(state => state?.Order?.data);
   const scrollViewRef = useRef(null);
   const [showDeliveryDetails, setShowDeliveryDetails] = useState([]);
+  const [productCount, setProductCount] = useState();
+  const [dataArray, setDataArray] = useState();
+  const [selectedDataArray, setSelectedDataArray] = useState();
 
   useEffect(() => {
     dispatch(fetchOrders());
-    setShowDeliveryDetails(new Array(dataArray.length).fill(false));
   }, [dispatch]);
-  const dataArray = orders?.flatMap(item => item?.dataArray.flat());
-// console.log("data in homescreen", dataArray)
-  // useEffect(() => {
-  //   socket.on('dataCreated', data => {
-  //     setNotifications(prevNotifications => [
-  //       ...prevNotifications,
-  //       data.newData,
-  //     ]);
-  //   });
-  //   return () => {
-  //     socket.disconnect();
-  //   };
-  // }, []);
+  console.log('orders================>', orders);
+  useEffect(() => {
+    if (orders && orders.data) {
+      setDataArray(orders.data);
+      console.log('chekcing connection');
+      setShowDeliveryDetails(new Array(orders.data.length).fill(false));
+
+      const productdetails = orders.data.flatMap(item =>
+        item.productDetails ? item.productDetails.flat() : [],
+      );
+
+      setProductCount(productdetails.length);
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    socket.on('connection', () => {
+      // setNotifications(prevNotifications => [
+      //   ...prevNotifications,
+      //   data.newData,
+      // ]);
+      dispatch(fetchOrders());
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [socket]);
+
   const currentTime = new Date();
   const hours = currentTime.getHours();
   const minutes = currentTime.getMinutes();
@@ -60,20 +79,28 @@ const HomeScreen = () => {
       socket.disconnect();
     };
   }, []);
-  
+
   const selectDeliveryHandler = (orderId, index) => {
     console.log('Order confirmed for ID:', orderId);
     const newShowDeliveryDetails = [...showDeliveryDetails];
     newShowDeliveryDetails[index] = !newShowDeliveryDetails[index];
     setShowDeliveryDetails(newShowDeliveryDetails);
+    const selectedProduct = orders?.data?.filter(
+      product => product._id === orderId,
+    );
+    const flatenSelectedData = selectedProduct.flatMap(item =>
+      item.productDetails ? item.productDetails.flat() : [],
+    );
+    setSelectedDataArray(flatenSelectedData);
+    console.log('selectedProduct', flatenSelectedData);
   };
 
-  const orderConformHandler = async (acceptOrderId,productId) => {
+  const orderConformHandler = async (acceptOrderId, productId) => {
     try {
       console.log(acceptOrderId);
       const [postResponse, deleteResponse] = await Promise.all([
         axios.post(API + 'add-accept-order-array/', {
-          acceptOrderId:productId,
+          acceptOrderId: productId,
           shopId: '661597712a93792d53b32449',
         }),
         axios.delete(
@@ -88,12 +115,12 @@ const HomeScreen = () => {
     }
   };
 
-  const rejectHandler = async (declineOrderId,productId) => {
+  const rejectHandler = async (declineOrderId, productId) => {
     try {
-      console.log("productId",declineOrderId)
+      console.log('productId', declineOrderId);
       const [postResponse, deleteResponse] = await Promise.all([
         axios.post(API + 'add-decline-order-array', {
-          declineOrderId:productId,
+          declineOrderId: productId,
           shopId: '661597712a93792d53b32449',
         }),
         axios.delete(
@@ -102,11 +129,10 @@ const HomeScreen = () => {
       ]);
 
       if (postResponse.data) {
-        console.log(postResponse.data)
+        console.log(postResponse.data);
         dispatch(fetchOrders());
       }
       if (deleteResponse.data) {
-        
         dispatch(fetchOrders());
       }
     } catch (error) {
@@ -115,9 +141,9 @@ const HomeScreen = () => {
   };
 
   const generateRandom4DigitNumber = () => {
-      const randomNumber = Math.floor(Math.random() * 10000);
-      const random4DigitNumber = randomNumber.toString().padStart(4, '0');
-      return random4DigitNumber;
+    const randomNumber = Math.floor(Math.random() * 10000);
+    const random4DigitNumber = randomNumber.toString().padStart(4, '0');
+    return random4DigitNumber;
   };
 
   const handleScrollEnd = () => {
@@ -133,10 +159,6 @@ const HomeScreen = () => {
     }
   }, []);
 
-  const handleScroll = event => {
-    console.log('Scroll position:', event.nativeEvent.contentOffset.x); // Log scroll position
-  };
-
   const renderItem = ({item, index}) => (
     <View>
       <View style={styles.itemContainer}>
@@ -144,40 +166,24 @@ const HomeScreen = () => {
           {index + 1}
         </Text>
 
-        <Image
-          source={{
-            uri: API + 'imageswinesubcategories/' + item?.productId?.images,
-          }}
-          style={styles.image}
-        />
-
         <Text
           style={[
             styles.itemTextMain,
             {width: Dimensions.get('screen').width * 0.23},
           ]}>
-          {item?.productId?.name}
+          {item?.orderId}
         </Text>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          onScrollEndDrag={handleScrollEnd}
-          onScroll={handleScroll}>
-          <View style={styles.itemContent}>
-            <Text style={styles.itemText}>{item?.quantity}</Text>
-            <Text style={styles.itemText}>{item?.productId?.miligram} ML</Text>
-            <Text style={styles.itemText}>₹{item?.productId?.price}</Text>
-            <TouchableOpacity
-              onPress={() => selectDeliveryHandler(item._id, index)}>
-              <Text style={styles.acceptText}>Accept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => rejectHandler(item._id,item?.productId._id)}>
-              <Text style={styles.declineText}>Decline</Text>
-            </TouchableOpacity>
-            <Text style={styles.itemText}>{item?._id}</Text>
-          </View>
-        </ScrollView>
+
+        <Text style={styles.itemText}>{item?.quantity}</Text>
+        <Text style={styles.itemText}>
+          {item?.productId?.miligram} {productCount} items
+        </Text>
+        <Text style={styles.itemText}>₹{item?.grandTotalPrice}</Text>
+
+        <TouchableOpacity
+          onPress={() => selectDeliveryHandler(item._id, index)}>
+          <Text style={styles.acceptText}>Details</Text>
+        </TouchableOpacity>
       </View>
       {showDeliveryDetails[index] && (
         // <FlatList
@@ -191,9 +197,46 @@ const HomeScreen = () => {
         //   keyExtractor={(item, index) => index.toString()}
         // />
         <View style={styles.deliveryContainer}>
-          <Text>delivery boy</Text>
-          <TouchableOpacity style={styles.confirmBtnContainer} onPress={() => orderConformHandler(item._id,item.productId._id)}>
-            <Text style={styles.confirmBtn}>Confirm</Text>
+          {selectedDataArray.map(product => (
+            <View key={product._id} style={styles.listedProductContainer}>
+              <Image
+                source={{
+                  uri: API + 'imageswinesubcategories/' + product?.images,
+                }}
+                style={styles.image}
+              />
+              <Text
+                style={[
+                  styles.listedItems,
+                  {width: Dimensions.get('screen').width * 0.25},
+                ]}>
+                {product.name}
+              </Text>
+              <Text style={styles.listedItems}>{product.miligram}ML</Text>
+              <Text style={styles.listedItems}>₹{product.price}</Text>
+              {/* <TouchableOpacity style={{}}>
+                <Icon name="checkcircle" size={18} color="green" />
+              </TouchableOpacity> */}
+              <TouchableOpacity
+                style={{}}
+                onPress={() =>
+                  orderConformHandler(item?._id, item?.productId?._id)
+                }>
+                <IconCross
+                  name="circle-with-cross"
+                  size={20}
+                  color={colors.RED}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={styles.confirmBtnContainer}
+            onPress={() =>
+              orderConformHandler(item?._id, item?.productId?._id)
+            }>
+            <Text style={styles.confirmBtn}>CONFORM ALL</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -256,22 +299,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginHorizontal: 5,
   },
-  declineText: {
-    color: 'red',
+  listedItems: {
     fontWeight: '700',
-    marginHorizontal: 5,
+    color: 'red',
   },
   deliveryContainer: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 5,
+  },
+  listedProductContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
   },
   confirmBtnContainer: {
     backgroundColor: 'green',
     paddingHorizontal: 5,
+    marginTop: 10,
+    alignItems: 'center',
+    borderRadius: 5,
   },
   confirmBtn: {
     fontWeight: '700',
     color: colors.WHITE,
+    paddingVertical: 5,
   },
 });

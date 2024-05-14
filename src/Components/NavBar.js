@@ -13,6 +13,7 @@ import {colors} from '../Global/styles';
 import Icon from 'react-native-vector-icons/dist/Ionicons';
 import {useDispatch, useSelector} from 'react-redux';
 import {fetchOrders} from '../redux/slices/orderSlice';
+import Sound from 'react-native-sound';
 
 const NavBar = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -23,17 +24,33 @@ const NavBar = () => {
   const orders = useSelector(state => state.Order.data);
   const [orderData, setOrderData] = useState();
   const [notificationCount, setNotificationCount] = useState();
+  const notificationSound = useRef(new Sound('./Assets/mixkit-confirmation-tone-2867.wav'));
 
   useEffect(() => {
     dispatch(fetchOrders());
     
   },[dispatch]);
   useEffect(()=>{
-    const dataArray = orders?.flatMap(item => item?.dataArray.flat());
-    setOrderData(dataArray);
-    setNotificationCount(dataArray?.length);
-    dataArray?.length > 0 ? setIsNotification(true) : setIsNotification(false);
-    // console.log('data array from redux', dataArray);
+     const playNotificationSound = async () => {
+    try {
+      const dataArray = orders?.data;
+      setOrderData(dataArray);
+      setNotificationCount(dataArray?.length);
+      const hasNewNotifications = dataArray?.length > 0;
+
+      if (hasNewNotifications && notificationCount !== hasNewNotifications) { // Play only when count increases
+        await notificationSound.current.play(); // Play the sound using async/await
+      }
+      setIsNotification(hasNewNotifications);
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
+  playNotificationSound();
+  return () => {
+    notificationSound.current.stop?.(); // Stop the sound if playing
+    notificationSound.current.release?.(); // Release resources (if available)
+  };
   },[orders])
 
   const toggleIsOpen = () => {

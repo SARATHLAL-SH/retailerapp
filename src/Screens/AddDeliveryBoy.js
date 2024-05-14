@@ -44,9 +44,13 @@ const AddDeliveryBoy = () => {
       Alert.alert('Error', 'Mobile number must be 10 digits numeric');
       return;
     }
+    try {
+    } catch (error) {
+      console.log('error in AddDeliveryBoy handleSubmit', error);
+    }
   };
 
-  const handleImageUpload = () => {
+  const handleImageUpload = async () => {
     let options = {
       storageOptions: {
         path: 'image',
@@ -54,10 +58,14 @@ const AddDeliveryBoy = () => {
     };
 
     launchImageLibrary(options, response => {
-      setFormData(prevState => ({
-        ...prevState,
-        aadharImage: response.assets[0].uri,
-      }));
+      if (response && response.assets.length > 0) {
+        setFormData(prevState => ({
+          ...prevState,
+          aadharImage: response.assets[0].uri,
+        }));
+      } else {
+        console.log('User cancelled image selection');
+      }
     });
   };
 
@@ -67,17 +75,31 @@ const AddDeliveryBoy = () => {
         path: 'image',
       },
     };
-    // try{
-    // await axios.get(API+'upload/delivery/aadhar')
-    // } catch(error){
-    //   console.log(error)
-    // }
+    
     launchCamera(options, response => {
-      setFormData(prevState => ({
-        ...prevState,
-        selfieImages: response.assets[0].uri,
-      }));
+      if (response && response.assets.length > 0) {
+        setFormData(prevState => ({
+          ...prevState,
+          selfieImages: response.assets[0].uri,
+        }));
+      } else {
+       console.log('User cancelled photo capture');
+      }
     });
+  };
+  const handleUpload = async () => {
+    console.log('formData?.aadharImage', formData?.selfieImages);
+    try {
+      const response = await axios.post(API + 'upload/delivery/aadhar', {
+        image: formData?.selfieImages,
+        mobileNumber: 8891332500,
+      });
+      if (response.data) {
+        console.log(response.data);
+      }
+    } catch (error) {
+      console.log('error in Add deliveryBoy adhaar image upload', error);
+    }
   };
   return (
     <View style={styles.container}>
@@ -186,6 +208,13 @@ const AddDeliveryBoy = () => {
           {formData.selfieImages && (
             <Image style={styles.image} source={{uri: formData.selfieImages}} />
           )}
+          {formData.selfieImages && (
+            <TouchableOpacity
+              onPress={handleUpload}
+              style={styles.uploadFileBtn}>
+              <Text style={styles.uploadFile}>UPLOAD</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <TouchableOpacity
           onPress={handleSubmit}
@@ -204,10 +233,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subContainer: {
-    backgroundColor: colors.MAIN_COLOR,
+    // backgroundColor: colors.MAIN_COLOR,
     flex: 1,
     paddingTop: 20,
     paddingHorizontal: 20,
+  
   },
   label: {
     fontSize: 18,
@@ -218,11 +248,12 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 40,
-    borderColor: '#f505f5',
-    borderWidth: 1,
+    borderBottomColor: '#f505f5',
+    borderBottomWidth: 1,
     borderRadius: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
     marginBottom: 10,
+    backgroundColor: 'rgba(300, 150, 300, 0.3)',
     color: '#ad09ad',
     fontWeight: '700',
   },

@@ -1,4 +1,12 @@
-import {StyleSheet, Text, View, FlatList, Image,TextInput} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  Image,
+  TextInput,
+  Alert,
+} from 'react-native';
 import React, {useEffect, useState} from 'react';
 import axios from 'axios';
 import {API} from '../utils/ApiUtils';
@@ -7,40 +15,103 @@ import {fetchAllProducs} from '../redux/slices/getAllProductsSlice';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/dist/MaterialCommunityIcons';
 import {colors} from '../Global/styles';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 const AddProducts = () => {
   const dispatch = useDispatch();
   const getAllProducts = useSelector(state => state.getProduct.data) || [];
-  // const [count, setCount] = useState(1);
-  const [counts, setCounts] = useState(() => getAllProducts.map(() => 1));
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
+  const [price, setPrice] = useState();
+  const [description, setDescription] = useState();
+  const [uploadImage, setUploadImage] = useState('');
+  const [message, setMessage] = useState();
 
+  const messageHanlder = msg => {
+    setMessage(msg);
+    setTimeout(() => {
+      setMessage('');
+    }, 300);
+  };
   useEffect(() => {
     dispatch(fetchAllProducs());
   }, [dispatch]);
   const getProductsData = getAllProducts;
   const filteredProducts = getAllProducts.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  
-
-  const addingHandler = index => {
-    const newCounts = [...counts];
-    if (newCounts[index] === undefined) {
-      newCounts[index] = 1;
+  const updateHandler = async (productName, id) => {
+    if (
+      description === '' ||
+      description === '' ||
+      // uploadImage === '' ||
+      price === ''
+    ) {
+      console.log('fill all data');
     } else {
-      newCounts[index] += 1;
+      console.log('editingItemIndex', editingItemIndex);
+      console.log('description', description);
+      console.log('uploadImage', uploadImage);
+      console.log('price', price);
+      console.log('prouctName', productName);
+      try {
+        const response = await axios.post(
+          API + 'create-correction-wine-categpry/',
+          {
+            price: price,
+            name: productName,
+            description: description,
+            image: uploadImage,
+            wineShop: editingItemIndex,
+          },
+        );
+        if (response.data) {
+          console.log(response.data);
+        }
+      } catch (error) {
+        console.log('error in AddProducts update Handler ', error);
+      }
+      Alert.alert(
+        'Updation Status',
+        `${productName} price updation request sent to Admin`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setEditingItemIndex(null);
+              setDescription('');
+              setPrice('');
+            },
+          },
+        ],
+        {cancelable: false},
+      );
     }
-    setCounts(newCounts);
   };
-  const removingHandler = index => {
-    const newCounts = [...counts];
-    newCounts[index] = newCounts[index] > 1 ? newCounts[index] - 1 : 1;
-    setCounts(newCounts);
+
+  console.log('editingItemIndex', editingItemIndex);
+
+  const handleImageUpload = () => {
+    let options = {
+      storageOptions: {
+        path: 'image',
+      },
+    };
+
+    launchImageLibrary(options, response => {
+      if (!response.didCancel) {
+        if (response.assets.length > 0) {
+          setUploadImage(response.assets[0].uri);
+        } else {
+          console.log('No image selected');
+        }
+      } else {
+        console.log('Image upload canceled');
+      }
+    });
   };
   const renderItem = ({item, index}) => (
-    <View>
+    <View style={styles.wraper}>
       <View style={styles.itemContainer}>
         <Image
           source={{uri: API + 'imageswinesubcategories/' + item?.images}}
@@ -52,29 +123,55 @@ const AddProducts = () => {
 
         <Text style={styles.commonText}>{item.miligram} ML</Text>
         <Text style={styles.commonText}>₹{item.price} </Text>
-        <TouchableOpacity
-          style={styles.minusContainer}
-          onPress={() => removingHandler(index)}>
-          <Text style={styles.minus}>-</Text>
-        </TouchableOpacity>
-        <Text style={styles.commonText}>{counts[index]} </Text>
-        <TouchableOpacity
-          style={styles.plusContainer}
-          onPress={() => addingHandler(index)}>
-          <Text style={styles.plus}>+</Text>
-        </TouchableOpacity>
+
         <TouchableOpacity style={styles.addContainer}>
           <Text style={styles.add}>Add</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.removeContainer}>
           <Icon name="pail-remove" size={17} color={colors.WHITE} />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.removeContainer, {backgroundColor: '#9c6809'}]}
+          onPress={() =>
+            setEditingItemIndex(item._id === editingItemIndex ? null : item._id)
+          }>
+          <Icon name="square-edit-outline" size={17} color={colors.WHITE} />
+        </TouchableOpacity>
       </View>
+      {item._id === editingItemIndex && (
+        <View style={styles.editContainer}>
+          <TextInput
+            keyboardType="numeric"
+            placeholder=" Updated Price ₹"
+            placeholderTextColor="#ab077c"
+            style={styles.textfield}
+            onChangeText={text => setPrice(text)}
+          />
+          <TouchableOpacity
+            style={[styles.removeContainer, {backgroundColor: 'green'}]}
+            onPress={handleImageUpload}>
+            <Text style={{color: 'white', fontWeight: '700'}}>upload</Text>
+            <Icon name="image" size={17} color={colors.WHITE} />
+          </TouchableOpacity>
+          <TextInput
+            placeholder="Add Description "
+            placeholderTextColor="#ab077c"
+            style={styles.textfield}
+            onChangeText={text => setDescription(text)}
+          />
+          <TouchableOpacity
+            style={styles.updateBtnContainer}
+            onPress={() => updateHandler(item?.name, item?._id)}>
+            <Text style={styles.updateBtn}>UPDATE</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
   return (
     <View>
-       <TextInput
+      <TextInput
         style={styles.input}
         placeholder="Search by name"
         onChangeText={setSearchQuery}
@@ -92,6 +189,9 @@ const AddProducts = () => {
 export default AddProducts;
 
 const styles = StyleSheet.create({
+  wraper: {
+    flexDirection: '',
+  },
   itemContainer: {
     flexDirection: 'row',
     marginVertical: 5,
@@ -126,6 +226,10 @@ const styles = StyleSheet.create({
   removeContainer: {
     backgroundColor: 'red',
     marginHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5,
+    paddingHorizontal: 5,
   },
   mainTextContainer: {
     marginHorizontal: 5,
@@ -163,4 +267,26 @@ const styles = StyleSheet.create({
     color: colors.WHITE,
   },
   plusContainer: {},
+  editContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  textfield: {
+    borderBottomWidth: 1,
+    padding: 0,
+    borderBottomColor: '#ab077c',
+    color: '#ab077c',
+  },
+  updateBtnContainer: {
+    backgroundColor: '#ab077c',
+    padding: 5,
+    borderRadius: 5,
+    elevation: 5,
+  },
+  updateBtn: {
+    fontWeight: '700',
+    color: colors.WHITE,
+  },
 });
