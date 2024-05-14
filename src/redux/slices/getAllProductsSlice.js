@@ -2,6 +2,7 @@ import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
 import axios from 'axios';
 import {API} from '../../utils/ApiUtils';
 
+
 export const fetchAllProducs = createAsyncThunk('fetchAllProducs', async () => {
   try {
     const response = await axios.get(API + 'get-all-wine-subcategories');
