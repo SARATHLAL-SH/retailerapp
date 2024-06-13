@@ -16,6 +16,7 @@ import {TouchableOpacity} from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/dist/MaterialCommunityIcons';
 import {colors} from '../Global/styles';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {addProductHandler,removeProductHandler} from '../Helpers/addProductHelpers';
 
 const AddProducts = () => {
   const dispatch = useDispatch();
@@ -26,6 +27,8 @@ const AddProducts = () => {
   const [description, setDescription] = useState();
   const [uploadImage, setUploadImage] = useState('');
   const [message, setMessage] = useState();
+  const wineShopId = '661597712a93792d53b32449';
+  const [addedProducts, setAddedProducts] = useState({});
 
   const messageHanlder = msg => {
     setMessage(msg);
@@ -112,6 +115,7 @@ const AddProducts = () => {
   };
   const renderItem = ({item, index}) => (
     <View style={styles.wraper}>
+      {console.log('item============>', item)}
       <View style={styles.itemContainer}>
         <Image
           source={{uri: API + 'imageswinesubcategories/' + item?.images}}
@@ -124,10 +128,16 @@ const AddProducts = () => {
         <Text style={styles.commonText}>{item.miligram} ML</Text>
         <Text style={styles.commonText}>₹{item.price} </Text>
 
-        <TouchableOpacity style={styles.addContainer}>
+        <TouchableOpacity
+          style={styles.addContainer}
+          onPress={() => {
+            addProductHandler(item.categoryID._id, wineShopId);
+          }}>
           <Text style={styles.add}>Add</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.removeContainer}>
+        <TouchableOpacity style={styles.removeContainer} onPress={() => {
+            removeProductHandler(item.categoryID._id, wineShopId);
+          }}>
           <Icon name="pail-remove" size={17} color={colors.WHITE} />
         </TouchableOpacity>
 

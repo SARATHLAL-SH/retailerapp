@@ -5,7 +5,7 @@ import {API} from '../../utils/ApiUtils';
 export const fetchOrders = createAsyncThunk('fetchOrders', async () => {
   try {
     const response = await axios.get(
-      API + 'get-all-customer-product-data/661f8701e75c32f25ed1bafe',
+      API + 'get-all-customer-product-data/661597712a93792d53b32449',
     );
     return response.data;
   } catch (error) {

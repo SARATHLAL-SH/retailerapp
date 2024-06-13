@@ -20,6 +20,7 @@ import {fetchOrders} from '../redux/slices/orderSlice';
 import Icon from 'react-native-vector-icons/AntDesign';
 import IconCross from 'react-native-vector-icons/Entypo';
 
+
 const HomeScreen = () => {
   // const [dataArray, setDataArray] = useState([]);
   const [data, setData] = useState(null);
@@ -32,11 +33,13 @@ const HomeScreen = () => {
   const [productCount, setProductCount] = useState();
   const [dataArray, setDataArray] = useState();
   const [selectedDataArray, setSelectedDataArray] = useState();
+  const [deliveryBoys,setDeliveryBoys] = useState()
 
   useEffect(() => {
     dispatch(fetchOrders());
+    selectDeliveryBoyHAndler()
   }, [dispatch]);
-  console.log('orders================>', orders);
+  // console.log('orders================>', orders);
   useEffect(() => {
     if (orders && orders.data) {
       setDataArray(orders.data);
@@ -158,7 +161,17 @@ const HomeScreen = () => {
       scrollViewRef.current.scrollTo({x: 0, y: 0, animated: false});
     }
   }, []);
-
+  const selectDeliveryBoyHAndler = async() =>{
+    try{
+const response = await axios.get(API+'get/register/delivery/boy');
+if(response.data){
+  console.log("response of all delivery boys", response.data)
+  setDeliveryBoys(response.data)
+}
+    }catch(error){
+      console.log("errorn in HomeScreen deliveryBoyHandler", error)
+    }
+  } 
   const renderItem = ({item, index}) => (
     <View>
       <View style={styles.itemContainer}>
@@ -220,7 +233,7 @@ const HomeScreen = () => {
               <TouchableOpacity
                 style={{}}
                 onPress={() =>
-                  orderConformHandler(item?._id, item?.productId?._id)
+                  rejectHandler(item?._id, item?.productId?._id)
                 }>
                 <IconCross
                   name="circle-with-cross"
@@ -230,7 +243,20 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
           ))}
-
+       
+       <TouchableOpacity
+            style={styles.confirmBtnContainer}
+            onPress={selectDeliveryBoyHAndler
+            }>
+            <Text style={styles.confirmBtn}>SELECT DELIVERY BOY</Text>
+          </TouchableOpacity>
+       <View>
+        {deliveryBoys.map((boy)=>(
+          <View key={boy._id}>
+            <Text>{boy.name}</Text>
+          </View>
+        ))}
+       </View>
           <TouchableOpacity
             style={styles.confirmBtnContainer}
             onPress={() =>
