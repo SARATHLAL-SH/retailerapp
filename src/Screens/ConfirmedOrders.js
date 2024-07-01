@@ -7,106 +7,97 @@ import {
   Image,
   TouchableOpacity,
   FlatList,
-  TextInput,
+  TextInput,ActivityIndicator,Animated
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback,useMemo} from 'react';
 import axios from 'axios';
 import {API} from '../utils/ApiUtils';
 import {colors} from '../Global/styles';
+import {useFocusEffect} from '@react-navigation/native'
+import RenderItem from '../Helpers/componentOrdersHelper';
+import {FixedSizeList} from 'react-window';
+
+// import {io} from 'socket.io-client';
+// import {WAPI} from '../utils/ApiUtils';
+import {useSelector, useDispatch} from  'react-redux';
+import { fetchConfirmedProducts } from '../redux/slices/confirmOrderSlice';
+import {debounce} from 'lodash'
+import {FadeIn, Rotate} from 'react-native-animatable'
+// import socketService from '../utils/socketService/soketService';
+ 
+
+
+let limit = 8;
+let loadMore =true;
+
 
 const ConfirmedOrders = () => {
   const [showDeliveryDetails, setShowDeliveryDetails] = useState([]);
   const [dataArray, setDataArray] = useState([]);
   const [searchText, setSearchText] = useState('');
-
-  const handleSearch = text => {
-    setSearchText(text);
-  };
-  const fetchData = async () => {
-    try {
-      const response = await axios.get(
-        API + 'get-accept-order-array/661597712a93792d53b32449',
+  const [filteredData, setFilteredData] = useState([]);
+  const [skip, setSkip] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  
+  // const socket = useMemo(() => io(WAPI), []);
+  const dispatch = useDispatch();
+  const confirmOrder = useSelector(state => state?.getProduct?.data) || [];
+ 
+  const handleSearch = useCallback(
+    (text) => {
+      setSearchText(text);
+      const filtered = dataArray.filter((item) =>
+         item?.confirmOrder?.orderId?.toString().startsWith(text)
       );
-
-      if (response.data) {
-        const responseData = response.data.orders;
-        const dataArray = responseData?.map((item, index) => ({
-          key: index,
-          acceptOrder: item.acceptOrder,
-        }));
-        setDataArray(dataArray);
-        setShowDeliveryDetails(new Array(dataArray.length).fill(false));
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  useEffect(() => {
-    fetchData();
-  }, []);
-  const orderConformHandler = (orderId, index) => {
-    console.log('Order confirmed for ID:', orderId);
-    const newShowDeliveryDetails = [...showDeliveryDetails];
-    newShowDeliveryDetails[index] = !newShowDeliveryDetails[index];
-    setShowDeliveryDetails(newShowDeliveryDetails);
-  };
-  const renderItem = ({item, index}) => (
-    <View>
-      <View key={item.key} style={styles.itemContainer}>
-        <Text style={[styles.itemText, {width: 20}]}>{item.key + 1}</Text>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.itemContent}>
-            <Image
-              source={{
-                uri:
-                  API + 'imageswinesubcategories/' + item?.acceptOrder?.images,
-              }}
-              style={styles.image}
-            />
-            <Text
-              style={[
-                styles.itemTextMain,
-                {width: Dimensions.get('screen').width * 0.28},
-              ]}>
-              {item?.acceptOrder?.name}
-            </Text>
-            <Text style={styles.itemText}>{item?.quantity}</Text>
-            <Text style={styles.itemText}>
-              {item?.acceptOrder?.miligram} ML
-            </Text>
-            <Text style={styles.itemText}>₹{item?.acceptOrder?.price}</Text>
-            <TouchableOpacity
-              onPress={() => orderConformHandler(item?._id, index)}>
-              <Text style={styles.acceptText}>Deliver</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.itemText}>{item?._id}</Text>
-          </View>
-        </ScrollView>
-      </View>
-      {showDeliveryDetails[index] && (
-        // <FlatList
-        //   data={item.deliveryBoys}
-        //   renderItem={({ item }) => (
-        //     <View style={styles.deliveryBoyContainer}>
-        //       <Text>name</Text>
-        //       {/* Render other delivery boy details here */}
-        //     </View>
-        //   )}
-        //   keyExtractor={(item, index) => index.toString()}
-        // />
-        <Text>delivery boy</Text>
-      )}
-    </View>
+      setFilteredData(filtered);
+    },
+    [dataArray] 
   );
+
+  const handleDispatch = () =>{
+   dispatch(fetchConfirmedProducts());
+  }
+useEffect(()=>{
+  console.log('confirmOrder called')
+  dispatch(fetchConfirmedProducts()).finally(() => setInitialLoading(false));
+},[dispatch])
+
+
+  
+  
+
+ const onEndReachedHandler = () => {
+   if (loadMore) {
+    setSkip(prevSkip => prevSkip + limit);
+  }
+ }
+
+useFocusEffect(
+  useCallback(() => {
+    setLoading(true); 
+    dispatch(fetchConfirmedProducts({ limit, skip: 0 }))
+      .then((response) => {
+        setDataArray(response?.payload?.orders); 
+        setFilteredData(response?.payload?.orders); 
+        setSkip(limit); 
+        setLoading(false); 
+      })
+      .catch((error) => {
+        console.error('Error fetching products:', error);
+        setLoading(false); 
+      });
+  }, [dispatch,limit,]) 
+);
+
+// 
   return (
     <View style={styles.container}>
       <View style={styles.gradientContainer}>
         <TextInput
           style={styles.searchInput}
           placeholder="Search Order ID"
-          onChangeText={handleSearch} maxLength={4} keyboardType='numeric'
+          onChangeText={handleSearch} maxLength={6} keyboardType='numeric'
           value={searchText}
         />
         <TouchableOpacity style={styles.clearBtnContainer} onPress={()=>{setSearchText('')}}>
@@ -114,11 +105,25 @@ const ConfirmedOrders = () => {
         </TouchableOpacity>
         
       </View>
+      {initialLoading?
+ 
+    <View style={styles.loadingContainer}>
+    <Image source={require('../../assets/soora.png')} style={styles.loadingImage} />
+     <View style={{position:'absolute'}}><ActivityIndicator size={{}} color={colors.WHITE} /></View>
+    </View>
+  
+:
       <FlatList
-        data={dataArray}
-        renderItem={renderItem}
-        keyExtractor={item => item.key}
-      />
+  data={searchText ? filteredData?.slice().reverse() : dataArray?.slice().reverse()  }
+  renderItem={({ item, index }) => <RenderItem item={item} index={index} setDataArray={setDataArray} setFilteredData={setFilteredData} dataArray={dataArray} filteredData={filteredData} />}
+  keyExtractor={(item, index) => index.toString()}
+  onEndReached={onEndReachedHandler}
+  onEndReachedThreshold={0.5}
+  ListFooterComponent={loading && <ActivityIndicator size="large" color={colors.RED} />}
+/>
+
+      } 
+
     </View>
   );
 };
@@ -132,17 +137,16 @@ const styles = StyleSheet.create({
   gradientContainer: {
     height: Dimensions.get('screen').height * 0.08,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 2,
     elevation: 10,
     backgroundColor: '#05548c',
     borderBottomColor: 'green',
     justifyContent: 'center',
-    alignItems: 'center',
+    
   },
   searchInput: {
-    backgroundColor: '#79f7e7',
+    backgroundColor:colors.WHITE,
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 5,
@@ -155,57 +159,25 @@ const styles = StyleSheet.create({
   },
   clearBtnContainer:{
     paddingVertical: 5,
-    backgroundColor:'#099684',
+    backgroundColor:colors.WHITE,
     marginHorizontal:8,
     paddingHorizontal:6,
-    borderRadius:5
+    borderRadius:5,  
   },
   clearBtn:{
     fontSize:16,
     fontWeight:'700',
-    color:colors.WHITE 
+    color:'#05548c' 
   },
-  itemContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingImage: {
+    width: 100,
+    height: 100,
+    // marginBottom: 20,
+  }
 
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 5,
-    paddingVertical: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: '#0af07d',
-    backgroundColor: '#099684',
-    paddingHorizontal: 5,
-    elevation: 20,
-  },
-  image: {
-    width: 25,
-    height: 25,
-  },
-  itemTextMain: {
-    fontWeight: '700',
-    color: colors.WHITE,
-    marginHorizontal: 5,
-    fontSize:16
-  },
-  itemText: {
-    fontWeight: '700',
-    color: colors.WHITE,
-    marginHorizontal: 5,
-  },
-  acceptText: {
-    color: '#113003',
-    fontWeight: '700',
-    fontSize: 20,
-    marginHorizontal: 10,
-  },
-  declineText: {
-    color: 'red',
-    fontWeight: '700',
-  },
 });

@@ -15,10 +15,12 @@ export const fetchOrders = createAsyncThunk('fetchOrders', async () => {
 
 const OrderSlice = createSlice({
   name: 'Orders',
-  initialState: {data: [], isLoader: false, isError: false},
+  initialState: {data: [], isLoader: false, isError: false,error: null},
   extraReducers: builder => {
     builder.addCase(fetchOrders.pending, (state, action) => {
       state.isLoader = true;
+      state.isError = false;
+      state.error = null;
     });
     builder.addCase(fetchOrders.fulfilled, (state, action) => {
       state.isLoader = false;
@@ -26,6 +28,7 @@ const OrderSlice = createSlice({
     });
     builder.addCase(fetchOrders.rejected, (state, action) => {
       state.isLoader = false;
+      state.isError = true;
       state.error = action.error.message;
     });
   },

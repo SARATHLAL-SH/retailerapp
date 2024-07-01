@@ -28,6 +28,7 @@ const AddProducts = () => {
   const [uploadImage, setUploadImage] = useState('');
   const [message, setMessage] = useState();
   const wineShopId = '661597712a93792d53b32449';
+  const [availableCategory, setAvailableCategory] = useState([]);
   const [addedProducts, setAddedProducts] = useState({});
 
   const messageHanlder = msg => {
@@ -39,15 +40,48 @@ const AddProducts = () => {
   useEffect(() => {
     dispatch(fetchAllProducs());
   }, [dispatch]);
+
+  const getWineShopDetails = async ()  =>{
+    const response = await axios.get(API + "get/wineshop/661597712a93792d53b32449");
+    const categories = response?.data?.availableCategory || [];
+    setAvailableCategory(categories);
+    const initialAddedProducts = {};
+    categories.forEach(product => {
+      initialAddedProducts[product._id] = true;
+    });
+    setAddedProducts(initialAddedProducts);
+    }
+console.log('addedProducts in array',addedProducts)
+  useEffect(()=>{
+    getWineShopDetails();
+  },[])
+//=======================>
+  const handleAddProduct = (productId) => {
+    
+    setAddedProducts(prevState => ({
+      ...prevState,
+      [productId]: true,
+    }));
+    addProductHandler( productId,wineShopId,);
+  };
+  
+  const handleRemoveProduct = (productId) => {
+    setAddedProducts(prevState => ({
+      ...prevState,
+      [productId]: false,
+    }));
+    removeProductHandler( productId,wineShopId,);
+  };
+//========================>
   const getProductsData = getAllProducts;
-  const filteredProducts = getAllProducts.filter(item =>
+  const filteredProducts = getAllProducts?.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const updateHandler = async (productName, id) => {
     if (
       description === '' ||
       description === '' ||
-      // uploadImage === '' ||
+     
       price === ''
     ) {
       console.log('fill all data');
@@ -115,7 +149,7 @@ const AddProducts = () => {
   };
   const renderItem = ({item, index}) => (
     <View style={styles.wraper}>
-      {console.log('item============>', item)}
+      {/* {console.log('items============>', item)} */}
       <View style={styles.itemContainer}>
         <Image
           source={{uri: API + 'imageswinesubcategories/' + item?.images}}
@@ -129,17 +163,17 @@ const AddProducts = () => {
         <Text style={styles.commonText}>₹{item.price} </Text>
 
         <TouchableOpacity
-          style={styles.addContainer}
+          style={[styles.addContainer, { backgroundColor: addedProducts[item._id] ? 'red' : 'green' }]}
           onPress={() => {
-            addProductHandler(item.categoryID._id, wineShopId);
+            addedProducts[item._id] ? handleRemoveProduct(item._id) : handleAddProduct(item._id);
           }}>
-          <Text style={styles.add}>Add</Text>
+           <Text style={styles.add}>{addedProducts[item._id] ? 'Remove' : 'Add'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.removeContainer} onPress={() => {
-            removeProductHandler(item.categoryID._id, wineShopId);
+        {/* <TouchableOpacity style={styles.removeContainer} onPress={() => {
+            removeProductHandler(item._id, wineShopId);
           }}>
           <Icon name="pail-remove" size={17} color={colors.WHITE} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={[styles.removeContainer, {backgroundColor: '#9c6809'}]}
@@ -247,7 +281,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mainText: {
-    color: 'black',
+    
     textAlign: 'left',
     fontWeight: '700',
     color: '#c74606',

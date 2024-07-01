@@ -9,11 +9,13 @@ import ConfirmedOrders from '../Screens/ConfirmedOrders';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Entypo from 'react-native-vector-icons/Entypo';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {createDrawerNavigator} from '@react-navigation/drawer';
+import {DrawerStatusContext, createDrawerNavigator} from '@react-navigation/drawer';
 import AddDeliveryBoy from '../Screens/AddDeliveryBoy';
 import Settings from '../Screens/Settings';
 import CancelledOrders from '../Screens/CancelledOrders';
 import AddProducts from '../Screens/AddProducts';
+import Login from '../Components/Login';
+import Dispatched from '../Screens/Dispatched';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -28,6 +30,7 @@ const AppDrawer = () => {
       <Drawer.Screen name="Add Delivery" component={AddDeliveryBoy} />
       <Drawer.Screen name="Add Product" component={AddProducts} />
       <Drawer.Screen name="Settings" component={Settings} />
+      <Drawer.Screen name="Login" component={Login} />
     </Drawer.Navigator>
   );
 };
@@ -51,6 +54,7 @@ const AppTab = () => {
             fontWeight: 'bold',
             color: '#750253',
           },
+          tabBarActiveBackgroundColor: 'lightblue',
         }}
       />
       <Tab.Screen
@@ -70,32 +74,14 @@ const AppTab = () => {
             fontWeight: 'bold',
             color: 'green',
           },
+          tabBarActiveBackgroundColor: 'lightblue',
         }}
       />
       <Tab.Screen
-        name="Sent Items"
-        component={ReceivedOrder}
+        name="Dispatched"
+        component={Dispatched}
         options={{
-          tabBarLabel: 'Sent Items',
-          tabBarIcon: () => (
-            <MaterialCommunityIcons
-              name="send-check"
-              color="#05877a"
-              size={30}
-            />
-          ),
-          tabBarLabelStyle: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: '#05877a',
-          },
-        }}
-      />
-      <Tab.Screen
-        name="delivered"
-        component={ReceivedOrder}
-        options={{
-          tabBarLabel: 'delivered',
+          tabBarLabel: 'Dispatched',
           tabBarIcon: () => (
             <MaterialCommunityIcons
               name="truck-delivery"
@@ -108,6 +94,27 @@ const AppTab = () => {
             fontWeight: 'bold',
             color: '#759404',
           },
+          tabBarActiveBackgroundColor: 'lightblue',
+        }}
+      />
+      <Tab.Screen
+        name="delivered"
+        component={ReceivedOrder}
+        options={{
+          tabBarLabel: 'Delivered',
+          tabBarIcon: () => (
+            <MaterialCommunityIcons
+              name="home-import-outline"
+              color="#cf7004"
+              size={30}
+            />
+          ),
+          tabBarLabelStyle: {
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#cf7004',
+          },
+          tabBarActiveBackgroundColor: 'lightblue',
         }}
       />
       <Tab.Screen
@@ -123,6 +130,7 @@ const AppTab = () => {
             fontWeight: 'bold',
             color: 'red',
           },
+          tabBarActiveBackgroundColor: 'lightblue',
         }}
       />
     </Tab.Navigator>

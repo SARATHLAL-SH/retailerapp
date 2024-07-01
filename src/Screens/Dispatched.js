@@ -14,42 +14,34 @@ import axios from 'axios';
 import {API} from '../utils/ApiUtils';
 import {colors} from '../Global/styles';
 import {useFocusEffect} from '@react-navigation/native'
-import RenderItem from '../Helpers/cancelledOrderHelper'
-import {FixedSizeList} from 'react-window';
+import RenderItem from '../Helpers/dispatchedHelper'
+
  
 
 
-let limit = 8;
+let limit = 13;
 let loadMore =true;
 
-const ReceivedOrder = () => {
+
+const Dispatched = () => {
   const [showDeliveryDetails, setShowDeliveryDetails] = useState([]);
   const [dataArray, setDataArray] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [filteredData, setFilteredData] = useState([]);
   const [skip, setSkip] = useState(0);
-  const shopId =  '661597712a93792d53b32449'
  
 
   const fetchData = async () => {
     try {
-      
-      const responseAPI = `${API}get-decline-order-array/${shopId}`;
-      
-      const response = await axios.get(responseAPI);
-      
-      if (response.data) {
+       const responseAPI = `${API}get/order/dispatched`;
+       const response = await axios.get(responseAPI);
+        if (response.data) {
         const responseData = response?.data.orders;
-        console.log("decline orders fetchDeata Fucntion Called", responseData);
-        const limitedData = responseData?.slice(skip, limit);
-       
-       if(responseData?.length ===0){
+        const limitedData = responseData.slice(skip, skip + limit);
+       setDataArray(prevDataArray => [...prevDataArray, ...limitedData]);
+        if(responseData?.length ===0){
         loadMore = false;
        }
-       setDataArray(limitedData)
-        setDataArray([...dataArray,...limitedData]);
-        
-
         setFilteredData(responseData);
       } } catch (error) {
       console.log("error in dispatched order",error);
@@ -83,14 +75,17 @@ const ReceivedOrder = () => {
     const item = searchText ? filteredData[index] : dataArray[index];
     return <RenderItem item={item} index={index} style={style} />;
   };
- const onEndReachedHandler = () => {
-  setSkip(skip+10);
-  console.log('onEndReachedHandler called');
-  if(loadMore) {
-    console.log("loadmore is true", loadMore)
+
+
+const onEndReachedHandler = () => {
+   if (loadMore) {
+    setSkip(prevSkip => prevSkip + limit);
     fetchData();
+    console.log('onEndReachedHandler called',skip);
+    console.log("loadMore",loadMore);
   }
  }
+
   return (
     <View style={styles.container}>
       <View style={styles.gradientContainer}>
@@ -105,7 +100,6 @@ const ReceivedOrder = () => {
         </TouchableOpacity>
         
       </View>
-      
       <FlatList
   data={searchText ? filteredData?.slice().reverse() : dataArray.slice().reverse()}
   renderItem={({ item, index }) => <RenderItem item={item} index={index} />}
@@ -113,13 +107,13 @@ const ReceivedOrder = () => {
   onEndReached={onEndReachedHandler}
 />
 
-     
+    
 
     </View>
-  )
+  );
 }
 
-export default ReceivedOrder
+export default Dispatched
 
 const styles = StyleSheet.create({
   container: {
@@ -131,7 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 2,
     elevation: 10,
-    backgroundColor: '#910aa8',
+    backgroundColor: '#21b8a1',
     borderBottomColor: 'green',
     justifyContent: 'center',
   },
@@ -157,6 +151,6 @@ const styles = StyleSheet.create({
   clearBtn:{
     fontSize:16,
     fontWeight:'700',
-    color:'#910aa8' 
+    color:'#21b8a1' 
   },
-})
+  })

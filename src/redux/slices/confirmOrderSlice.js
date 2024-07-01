@@ -3,9 +3,9 @@ import axios from 'axios';
 import {API} from '../../utils/ApiUtils';
 
 
-export const fetchAllProducs = createAsyncThunk('fetchAllProducs', async () => {
+export const fetchConfirmedProducts = createAsyncThunk('fetchConfirmedProducts', async () => {
   try {
-    const response = await axios.get(`${API}get-all-wine-subcategories`);
+    const response = await axios.get(`${API}get/order/confirmed`);
     return response.data;
   } catch (error) {
     throw error;
@@ -13,18 +13,18 @@ export const fetchAllProducs = createAsyncThunk('fetchAllProducs', async () => {
 });
 
 const GetAllProductsSlice = createSlice({
-  name: 'getProducts',
+  name: 'getConfirmedProducts',
   initialState: {data: [], isLoader: false, isError: false},
   extraReducers: builder => {
-    builder.addCase(fetchAllProducs.pending, (state, action) => {
+    builder.addCase(fetchConfirmedProducts.pending, (state, action) => {
       state.isLoader = true;
     });
-    builder.addCase(fetchAllProducs.fulfilled, (state, action) => {
-      console.log('fetchAllProducsSlice called in redux');
+    builder.addCase(fetchConfirmedProducts.fulfilled, (state, action) => {
+      console.log('fetchConfirmedProductsSlice called in redux');
       state.isLoader = false;
       state.data = action.payload;
     });
-    builder.addCase(fetchAllProducs.rejected, (state, action) => {
+    builder.addCase(fetchConfirmedProducts.rejected, (state, action) => {
       state.isLoader = false;
       state.isError = true;
     });

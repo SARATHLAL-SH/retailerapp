@@ -9,8 +9,9 @@ import {
   Image,
   Dimensions,
   ScrollView,
+  ActivityIndicator
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useState,useCallback,useMemo} from 'react';
 import NavBar from '../Components/NavBar';
 import {colors} from '../Global/styles';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
@@ -22,59 +23,70 @@ import {
 } from '../Helpers/addDeliveryBoyHelper';
 
 const AddDeliveryBoy = () => {
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [address, setAddress] = useState('');
-  const [aadhaarCardNumber, setAadhaarNumber] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [aadharImage, setUploadAdhaar] = useState();
-  const [selfieImages, setCapturedPhoto] = useState();
+  const [formData, setFormData] = useState({
+    name: '',
+    age: '',
+    address: '',
+    aadhaarCardNumber: '',
+    mobileNumber: '',
+    aadharImage: null,
+    selfieImages: null,
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    // Validate Aadhaar number
-    const aadhaarRegex = /^[0-9]{12}$/;
-    if (!aadhaarRegex.test(aadhaarCardNumber)) {
-      Alert.alert('Error', 'Aadhaar number must be 12 digits numeric');
-      return;
+  const handleChange = useCallback((name, value) => {
+    setFormData(prevData => ({ ...prevData, [name]: value }));
+  }, []);
+
+  const validateForm = () => {
+    const { name, age, address, aadhaarCardNumber, mobileNumber, aadharImage, selfieImages } = formData;
+    if (!name || !age || !address || !aadhaarCardNumber || !mobileNumber || !aadharImage || !selfieImages) {
+      Alert.alert('Error', 'Please fill all the fields');
+      return false;
     }
-
-    // Validate mobile number
+    if (age < 21) {
+      Alert.alert('Error', 'Age must be greater than 21');
+      return false;
+    }
     const mobileRegex = /^[0-9]{10}$/;
     if (!mobileRegex.test(mobileNumber)) {
       Alert.alert('Error', 'Mobile number must be 10 digits numeric');
-      return;
-    } else {
-      try {
-        const response = await axios.post(API + 'register/delivery/boy', {
-          name,
-          age,
-          address,
-          aadhaarCardNumber,
-          mobileNumber,
-          aadharImage,
-          selfieImages,
-        });
-        if (response.data) {
-          console.log(response.data);
-        }
-      } catch (error) {
-        console.log('error in add delivery boy handlesubmit', error);
-      }
+      return false;
     }
-    // Submit the form data
-    // You can send the data to your server or perform any other action here
-    console.log('Form submitted:', {
-      name,
-      age,
-      address,
-      aadhaarCardNumber,
-      mobileNumber,
-      aadharImage,
-      selfieImages,
-    });
+    const aadhaarRegex = /^[0-9]{12}$/;
+    if (!aadhaarRegex.test(aadhaarCardNumber)) {
+      Alert.alert('Error', 'Aadhaar number must be 12 digits numeric');
+      return false;
+    }
+    return true;
   };
 
-  const handleImageUpload = () => {
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    const { name, age, address, aadhaarCardNumber, mobileNumber, aadharImage, selfieImages } = formData;
+    try {
+      const response = await axios.post(API + 'register/delivery/boy', {
+        name,
+        age,
+        address,
+        aadhaarCardNumber,
+        mobileNumber,
+        aadharImage,
+        selfieImages,
+      });
+      if (response.data) {
+        console.log(response.data);
+      }
+    } catch (error) {
+      console.log('error in add delivery boy handlesubmit', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = useCallback(() => {
     let options = {
       storageOptions: {
         path: 'image',
@@ -82,11 +94,19 @@ const AddDeliveryBoy = () => {
     };
 
     launchImageLibrary(options, response => {
-      setUploadAdhaar(response.assets[0].uri);
+      if (response.didCancel) {
+        console.log('User cancelled operation');
+      } else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+      } else if (response.customButton) {
+        console.log('User tapped custom button: ', response.customButton);
+      } else {
+        handleChange('aadharImage', response.assets[0].uri);
+      }
     });
-  };
+  }, [handleChange]);
 
-  const handlephotoUpload = () => {
+  const handlePhotoUpload = useCallback(() => {
     let options = {
       storageOptions: {
         path: 'image',
@@ -94,105 +114,116 @@ const AddDeliveryBoy = () => {
     };
 
     launchCamera(options, response => {
-      setCapturedPhoto(response.assets[0].uri);
-      console.log('respionse', response.assets[0].uri);
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+      } else if (response.customButton) {
+        console.log('User tapped custom button: ', response.customButton);
+      } else {
+        handleChange('selfieImages', response.assets[0].uri);
+      }
     });
-  };
+  }, [handleChange]);
+
+  const ImagePreview = useMemo(() => {
+    return ({ uri }) => uri ? <Image style={styles.image} source={{ uri }} /> : null;
+  }, []);
 
   return (
     <View style={styles.container}>
       <NavBar />
       <ScrollView style={styles.subContainer}>
-        <Text style={styles.label}>Name:</Text>
+        <Text style={[styles.label, { marginTop: 0 }]}>Name:</Text>
         <TextInput
           style={styles.input}
-          value={name}
-          onChangeText={text => setName(text)}
+          value={formData.name}
+          onChangeText={text => handleChange('name', text)}
           placeholder="Enter name"
-          placeholderTextColor="#eb78eb"
+          placeholderTextColor="#a3b3b8"
         />
         <Text style={styles.label}>Mobile Number:</Text>
         <TextInput
           style={styles.input}
-          value={mobileNumber}
-          onChangeText={text => setMobileNumber(text)}
+          value={formData.mobileNumber}
+          onChangeText={text => handleChange('mobileNumber', text)}
           placeholder="Enter mobile number"
           keyboardType="numeric"
-          placeholderTextColor="#eb78eb"
+          placeholderTextColor="#a3b3b8"
+          maxLength={10}
         />
         <Text style={styles.label}>Age:</Text>
         <TextInput
           style={styles.input}
-          value={age}
-          onChangeText={text => setAge(text)}
+          value={formData.age}
+          onChangeText={text => handleChange('age', text)}
           placeholder="Enter age"
           keyboardType="numeric"
-          placeholderTextColor="#eb78eb"
+          placeholderTextColor="#a3b3b8"
+          maxLength={2}
         />
         <Text style={styles.label}>Address:</Text>
         <TextInput
-          style={styles.input}
-          value={address}
-          onChangeText={text => setAddress(text)}
+          style={[styles.input, { height: Dimensions.get('window').height * 0.10 }]}
+          value={formData.address}
+          onChangeText={text => handleChange('address', text)}
           placeholder="Enter address"
-          placeholderTextColor="#eb78eb"
+          placeholderTextColor="#a3b3b8"
         />
         <Text style={styles.label}>Aadhaar Card Number:</Text>
         <TextInput
           style={styles.input}
-          value={aadhaarCardNumber}
-          onChangeText={text => setAadhaarNumber(text)}
+          value={formData.aadhaarCardNumber}
+          onChangeText={text => handleChange('aadhaarCardNumber', text)}
           placeholder="Enter Aadhaar card number"
           keyboardType="numeric"
-          placeholderTextColor="#eb78eb"
+          placeholderTextColor="#a3b3b8"
+          maxLength={12}
         />
 
-        {/* Upload Aadhaar Card Photo */}
-        {/* Implement your code to upload Aadhaar card photo here */}
         <Text style={styles.label}>Upload Aadhaar Card Photo:</Text>
-        {/* Your code for uploading photo */}
         <TouchableOpacity
           onPress={handleImageUpload}
           style={styles.uploadFileBtn}>
           <Text style={styles.uploadFile}>Select From Gallery</Text>
         </TouchableOpacity>
         <View style={styles.uploadAdharContainer}>
-          {aadharImage && (
-            <Image style={styles.image} source={{uri: aadharImage}} />
-          )}
+          <ImagePreview uri={formData.aadharImage} />
         </View>
 
-        {aadharImage && (
+        {formData.aadharImage && (
           <TouchableOpacity
-            onPress={() => uploadAdhaarHandler({aadharImage})}
+            onPress={() => uploadAdhaarHandler({ aadharImage: formData.aadharImage })}
             style={styles.uploadFileBtn}>
             <Text style={styles.uploadFile}>UPLOAD</Text>
           </TouchableOpacity>
         )}
 
         <Text style={styles.label}>Upload photo of Delivery Boy:</Text>
-        {/* Your code for uploading photo */}
         <TouchableOpacity
-          onPress={handlephotoUpload}
+          onPress={handlePhotoUpload}
           style={styles.uploadFileBtn}>
           <Text style={styles.uploadFile}>Open Camera</Text>
         </TouchableOpacity>
 
         <View style={styles.uploadAdharContainer}>
-          {selfieImages && (
-            <Image style={styles.image} source={{uri: selfieImages}} />
-          )}
+          <ImagePreview uri={formData.selfieImages} />
         </View>
 
-        {selfieImages && (
+        {formData.selfieImages && (
           <TouchableOpacity
-            onPress={() => uploadPhoto({selfieImages})}
+            onPress={() => uploadPhoto({ selfieImages: formData.selfieImages })}
             style={styles.uploadFileBtn}>
             <Text style={styles.uploadFile}>UPLOAD PHOTO</Text>
           </TouchableOpacity>
         )}
+
         <TouchableOpacity onPress={handleSubmit} style={[styles.createButton]}>
-          <Text style={styles.uploadFile}>CREATE ACCOUNT</Text>
+          {loading ? (
+            <ActivityIndicator color={colors.WHITE} />
+          ) : (
+            <Text style={styles.uploadFile}>CREATE ACCOUNT</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -206,34 +237,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subContainer: {
-    backgroundColor: colors.MAIN_COLOR,
+    // backgroundColor: '#0d1961',
     flex: 1,
     paddingTop: 20,
     paddingHorizontal: 20,
+    borderWidth:1.5,
+    borderwidthColor:'white',
+    margin:8,
+    elevation:2
   },
   label: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
-    color: '#730273',
+    color: '#0583ad',
+    marginTop: 5,
   },
   input: {
     width: '100%',
-    height: 40,
-    borderColor: '#f505f5',
-    borderWidth: 1,
-    borderRadius: 5,
+    // heigdfht: 40,
+    borderColor: '#0583ad',
+    borderWidth: 1.5,
+   
     paddingHorizontal: 10,
     marginBottom: 10,
-    color: '#ad09ad',
+    color: '#a3b3b8',
     fontWeight: '700',
+    fontSize:16,
+    // elevation:1,
+    borderRadius: 10,
   },
   uploadFileBtn: {
-    backgroundColor: '#ad09ad',
+    backgroundColor: '#00c2a2',
     marginBottom: 10,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 5,
+    
   },
   uploadFile: {
     fontWeight: '700',
@@ -249,10 +289,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   createButton: {
-    backgroundColor: 'blue',
+    backgroundColor: '#0e9e26',
     marginBottom: 30,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 5,
+    marginTop: 15,
   },
 });

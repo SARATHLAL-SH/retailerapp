@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { Accelerometer,gyroscope  } from 'react-native-sensors';
 import LinearGradient from 'react-native-linear-gradient';
 import React, {useEffect, useRef, useState} from 'react';
 import {colors} from '../Global/styles';
@@ -14,31 +15,45 @@ import Icon from 'react-native-vector-icons/dist/Ionicons';
 import {useDispatch, useSelector} from 'react-redux';
 import {fetchOrders} from '../redux/slices/orderSlice';
 import Sound from 'react-native-sound';
+import axios from 'axios';
+import { API } from '../utils/ApiUtils';
+import { combineSlices } from '@reduxjs/toolkit';
 
 const NavBar = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [isOpen, setIsOpen] = useState(false);
-  const [isnotification, setIsNotification] = useState(false);
+  
   const dispatch = useDispatch();
   const orders = useSelector(state => state.Order.data);
+
   const [orderData, setOrderData] = useState();
   const [notificationCount, setNotificationCount] = useState();
-  const notificationSound = useRef(new Sound('./Assets/mixkit-confirmation-tone-2867.wav'));
+   const [isnotification, setIsNotification] = useState(false);
+
+  const [rotateX] = useState(new Animated.Value(0));
+  const [rotateY] = useState(new Animated.Value(0));
+  const [rotateZ] = useState(new Animated.Value(0));
+  const shopID = '661597712a93792d53b32449';
 
   useEffect(() => {
     dispatch(fetchOrders());
     
   },[dispatch]);
+
+  
+    const notificationSound = useRef(new Sound('../../assets/notification_ding.mp3'));
+   
+
   useEffect(()=>{
      const playNotificationSound = async () => {
     try {
       const dataArray = orders?.data;
       setOrderData(dataArray);
-      setNotificationCount(dataArray?.length);
-      const hasNewNotifications = dataArray?.length > 0;
+      setNotificationCount(dataArray?.length || 0);
+      const hasNewNotifications = dataArray?.length > 0 ;
 
-      if (hasNewNotifications && notificationCount !== hasNewNotifications) { // Play only when count increases
+      if (hasNewNotifications && notificationCount < hasNewNotifications) { // Play only when count increases
         await notificationSound.current.play(); // Play the sound using async/await
       }
       setIsNotification(hasNewNotifications);
@@ -48,10 +63,88 @@ const NavBar = () => {
   };
   playNotificationSound();
   return () => {
-    notificationSound.current.stop?.(); // Stop the sound if playing
-    notificationSound.current.release?.(); // Release resources (if available)
+    if (notificationSound.current) {
+      notificationSound.current.stop?.();
+      notificationSound.current.release?.();
+    }
   };
   },[orders])
+  const fetchShopStatus = async () => {
+    console.log("Fetching shop status...");
+    try {
+      const response = await axios.put(`${API}update/wineshop/satatus/open/closed/${shopID}`);
+      if (response.data) {
+        const { data } = response.data;
+        console.log(data);
+        if (data.status === 'open') {
+          setIsOpen(true);
+          console.log('Shop is open');
+        } else {
+          setIsOpen(false);
+          console.log('Shop is closed');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching shop status:', error);
+    }
+  };
+
+useEffect(()=>{
+ try{
+  const fetchShopInitialStatus = async () => {
+const response = await axios.get(`${API}get/wineshop/${shopID}`);
+if(response.data){
+const {status} =response.data;
+if(status === 'open'){
+setIsOpen(true);
+} else{
+setIsOpen(false);
+}
+}
+}
+fetchShopInitialStatus();
+ } catch (error) {
+ console.log('error in fetching shop status',error);
+ }
+ 
+},[])
+
+
+ 
+  useEffect(() => {
+    const subscription = gyroscope.subscribe(({ x, y, z }) => {
+      // Update the animated values based on the gyroscope data
+      rotateX.setValue(x);
+      rotateY.setValue(y);
+      rotateZ.setValue(z);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [rotateX, rotateY, rotateZ]);
+
+  const rotationStyle = {
+    transform: [
+      {
+        rotateX: rotateX.interpolate({
+          inputRange: [-1, 1],
+          outputRange: ['-1rad', '1rad'],
+        }),
+      },
+      {
+        rotateY: rotateY.interpolate({
+          inputRange: [-1, 1],
+          outputRange: ['-1rad', '1rad'],
+        }),
+      },
+      {
+        rotateZ: rotateZ.interpolate({
+          inputRange: [-1, 1],
+          outputRange: ['-1rad', '1rad'],
+        }),
+      },
+    ],
+  };
+
 
   const toggleIsOpen = () => {
     Alert.alert(
@@ -65,7 +158,7 @@ const NavBar = () => {
         {
           text: 'Confirm',
           onPress: () => {
-            setIsOpen(!isOpen);
+            fetchShopStatus();
           },
         },
       ],
@@ -104,6 +197,7 @@ const NavBar = () => {
         ]}>
         <TouchableOpacity onPress={animationHandler}>
           <View style={styles.textContainer}>
+          <Animated.Image source={require('../../assets/soora.png')} style={[styles.image, rotationStyle]}/>
             <Animated.Text style={[styles.text, animatedStyle]}>
               SURA APP
             </Animated.Text>
@@ -117,6 +211,7 @@ const NavBar = () => {
           />
           <Text style={styles.notificationCount}>{notificationCount}</Text>
         </View>
+        {/* <Text style={{color:'red'}}>x:{x}</Text> */}
         <View>
           <TouchableOpacity
             style={[
@@ -125,10 +220,13 @@ const NavBar = () => {
             ]}
             onPress={toggleIsOpen}>
             <Text style={[styles.status, {color: isOpen ? 'green' : 'red'}]}>
-              {isOpen ? 'OPEN' : 'CLOSED'}
+              {isOpen?'OPEN' : 'CLOSED'}
             </Text>
+          
           </TouchableOpacity>
+          
         </View>
+        
       </LinearGradient>
     </View>
   );
@@ -150,13 +248,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 5,
-    // semi-transparent white background
+   flexDirection: 'row',
   },
   text: {
     color: colors.WHITE,
     fontWeight: '700',
     fontSize: 20,
-    paddingLeft: 40,
+    paddingLeft: 20,
+    paddingTop: 5,
   },
   btnContainer: {
     borderWidth: 1,
@@ -179,5 +278,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
     top: -8,
+  },
+  image: {
+    width: 40,
+    height: 40,
   },
 });
